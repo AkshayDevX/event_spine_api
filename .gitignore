@@ -4,3 +4,6 @@ node_modules
 .env*
 !.env.docker.example
 !.env.example
+
+# Test Data
+workflow-examples.json
