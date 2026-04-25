@@ -31,9 +31,11 @@ export async function signupHandler(
         slug: result.workspace.slug,
       },
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     request.log.error(err);
-    return reply.status(400).send({ message: err.message });
+    const message =
+      err instanceof Error ? err.message : "An unexpected error occurred";
+    return reply.status(400).send({ message });
   }
 }
 
@@ -65,8 +67,9 @@ export async function loginHandler(
     });
 
     return reply.send({ token });
-  } catch (err: any) {
+  } catch (err: unknown) {
     request.log.error(err);
-    return reply.status(401).send({ message: err.message });
+    const message = err instanceof Error ? err.message : "Invalid credentials";
+    return reply.status(401).send({ message });
   }
 }

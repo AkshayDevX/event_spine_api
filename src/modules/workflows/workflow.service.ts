@@ -59,6 +59,44 @@ export class WorkflowService {
 
     return workflow;
   }
+
+  async getWorkflowRuns(workspaceId: string, workflowId: string) {
+    // First verify workflow exists and belongs to workspace
+    await this.getWorkflow(workspaceId, workflowId);
+
+    return await db.query.workflowRuns.findMany({
+      where: { workflowId },
+      orderBy: { createdAt: "desc" },
+    });
+  }
+
+  async getWorkflowRunDetails(
+    workspaceId: string,
+    workflowId: string,
+    runId: string,
+  ) {
+    // Verify ownership
+    await this.getWorkflow(workspaceId, workflowId);
+
+    const runDetails = await db.query.workflowRuns.findFirst({
+      where: { workflowId, id: runId },
+      with: {
+        event: true,
+        steps: {
+          orderBy: { createdAt: "asc" },
+          with: {
+            step: true,
+          },
+        },
+      },
+    });
+
+    if (!runDetails) {
+      throw new Error("Workflow run not found");
+    }
+
+    return runDetails;
+  }
 }
 
 export const workflowService = new WorkflowService();

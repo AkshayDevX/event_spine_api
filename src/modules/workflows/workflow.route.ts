@@ -3,6 +3,8 @@ import {
   createWorkflowHandler,
   getWorkflowHandler,
   listWorkflowsHandler,
+  getWorkflowRunsHandler,
+  getWorkflowRunDetailsHandler,
 } from "./workflow.controller";
 
 export default async function workflowRoutes(app: FastifyInstance) {
@@ -61,5 +63,40 @@ export default async function workflowRoutes(app: FastifyInstance) {
       },
     },
     getWorkflowHandler,
+  );
+
+  app.get(
+    "/:id/runs",
+    {
+      schema: {
+        tags: ["workflows"],
+        security: [{ bearerAuth: [] }],
+        params: {
+          type: "object",
+          properties: {
+            id: { type: "string", format: "uuid" },
+          },
+        },
+      },
+    },
+    getWorkflowRunsHandler,
+  );
+
+  app.get(
+    "/:id/runs/:runId",
+    {
+      schema: {
+        tags: ["workflows"],
+        security: [{ bearerAuth: [] }],
+        params: {
+          type: "object",
+          properties: {
+            id: { type: "string", format: "uuid" },
+            runId: { type: "string", format: "uuid" },
+          },
+        },
+      },
+    },
+    getWorkflowRunDetailsHandler,
   );
 }
