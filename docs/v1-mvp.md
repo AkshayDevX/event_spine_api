@@ -43,3 +43,12 @@ This document outlines the core features implemented during the foundational pha
 - **Interactive Tooling**: Configured `@fastify/swagger` and `@fastify/swagger-ui` to auto-generate beautiful, interactive API documentation dynamically mapped from the Fastify route schemas.
 - **Strict TypeScript**: Zero `any` types across all controllers, services, and the executor. All catch blocks use `unknown` with `instanceof Error` narrowing. JWT payloads are typed via a `JwtPayload` interface.
 - **Drizzle RQB v2**: All relational queries use the latest object-based syntax for cleaner, more readable database access.
+
+## 7. Automated Testing (Vitest)
+
+- **Two-Tier Strategy**: Pure unit tests for the executor (no database) and integration tests for HTTP endpoints (mocked database via `vi.mock`).
+- **Executor Unit Tests (18 tests)**: Full coverage of all filter operators (`equals`, `not_equals`, `contains`, `exists`), nested dot-notation key access, HTTP request mocking via `vi.stubGlobal("fetch")`, error path validation, and `executeStep` routing logic.
+- **Auth Integration Tests (4 tests)**: Signup success/validation and login success/failure using Fastify's `app.inject()` for in-process HTTP testing.
+- **Workflow Integration Tests (4 tests)**: CRUD operations, JWT auth guard enforcement (401 without token), and 404 error handling.
+- **Webhook Integration Tests (3 tests)**: 202 Accepted for valid paths, 404 for unknown/inactive webhook paths.
+- **Test Commands**: `npm test` for single run, `npm run test:watch` for development mode.

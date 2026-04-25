@@ -32,6 +32,7 @@ Established the foundational backend architecture, database schemas, and multi-t
 - Execution visibility APIs with step-level audit trails
 - Zero `any` types — strict TypeScript across the entire codebase
 - Drizzle RQB v2 relational queries
+- Vitest test suite — 29 tests covering executor unit tests and integration tests
 
 👉 **[Read the full feature logs for v1-mvp here.](./docs/v1-mvp.md)**
 
