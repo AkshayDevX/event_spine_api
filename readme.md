@@ -19,11 +19,20 @@ This section logs the progression of the project from a basic MVP to a scalable,
 
 ---
 
-### Phase 1: v1-mvp (The Foundation)
+### Phase 1: v1-mvp (The Foundation + Async Execution Engine)
 
 _Status: Complete_
 
-Established the foundational backend architecture, database schemas, and multi-tenant capabilities. Built the core trigger/action concepts allowing synchronous webhook ingestions.
+Established the foundational backend architecture, database schemas, and multi-tenant capabilities. Evolved the synchronous webhook handler into an enterprise-grade asynchronous pipeline with a real step executor and strict TypeScript.
+
+- Multi-tenant workspace architecture with JWT authentication
+- Asynchronous webhook processing with `202 Accepted` and fire-and-forget execution
+- Database state machine for full execution lifecycle tracking
+- Real step executor supporting `http_request` and `filter` actions
+- Execution visibility APIs with step-level audit trails
+- Zero `any` types — strict TypeScript across the entire codebase
+- Drizzle RQB v2 relational queries
+
 👉 **[Read the full feature logs for v1-mvp here.](./docs/v1-mvp.md)**
 
 ---
@@ -32,9 +41,12 @@ Established the foundational backend architecture, database schemas, and multi-t
 
 _Status: Pending_
 
-Refactoring the execution flow from synchronus API calls to reliable, background asynchronous jobs.
+Refactoring the execution flow from detached promises to reliable, distributed background jobs.
 
-- Planned features: Intoduction of Redis & BullMQ, exponential backoff retries, decoupling of Publishers/Subscribers, and Dead Letter Queues (DLQ).
+- **Redis & BullMQ** — replace the fire-and-forget promise with a durable job queue for guaranteed delivery.
+- **Exponential Backoff Retries** — automatic retry with increasing delays for failed steps.
+- **Dead Letter Queues (DLQ)** — capture permanently failed events for manual inspection and replay.
+- **Publisher/Subscriber Decoupling** — separate the API server from the worker processes for independent scaling.
 
 ---
 
@@ -45,11 +57,11 @@ _Status: Pending_
 Hardening the backend application to be production-ready at the code level before touching infrastructure.
 
 - **Node.js Cluster mode** — spawn one Fastify process per CPU core using the native `cluster` API or PM2 cluster mode.
-- **Real Step Executor** — replace the `setTimeout` mock in `webhook.worker.ts` with a real `StepExecutor` dispatching on `actionType` (e.g. `http_request`, `log_payload`).
 - **Strict per-tenant Rate Limiting** — `@fastify/rate-limit` keyed by `webhookPath` and `workspaceId` to prevent any single tenant from monopolizing queue capacity.
 - **Idempotency Keys** — reject or deduplicate duplicate webhook deliveries using a Redis `SET NX` guard on a caller-provided `X-Idempotency-Key` header.
 - **Circuit Breakers** — wrap outbound `http_request` step calls with `opossum` to stop hammering downstream APIs when they are degraded.
 - **RBAC & Hierarchical API Keys** — workspace-scoped API keys with fine-grained permission scopes, replacing the current single JWT model.
+- **Refresh Tokens** — short-lived access tokens with long-lived refresh tokens stored in the database.
 
 ---
 
