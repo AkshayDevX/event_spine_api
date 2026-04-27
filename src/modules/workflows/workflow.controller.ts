@@ -1,6 +1,6 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { workflowService } from "./workflow.service";
-import { createWorkflowSchema } from "./workflow.schema";
+import { createWorkflowSchema, updateWorkflowSchema } from "./workflow.schema";
 
 interface JwtPayload {
   id: string;
@@ -28,13 +28,14 @@ export async function createWorkflowHandler(
 }
 
 export async function listWorkflowsHandler(
-  request: FastifyRequest,
+  request: FastifyRequest<{ Querystring: { page: number; limit: number; search?: string } }>,
   reply: FastifyReply,
 ) {
   try {
     const { workspaceId } = request.user as JwtPayload;
-    const workflows = await workflowService.listWorkflows(workspaceId);
-    return reply.send({ workflows });
+    const { page, limit, search } = request.query;
+    const result = await workflowService.listWorkflows(workspaceId, { page, limit, search });
+    return reply.send(result);
   } catch (err: unknown) {
     request.log.error(err);
     return reply.status(500).send({ message: "Internal Server Error" });
@@ -55,6 +56,35 @@ export async function getWorkflowHandler(
     request.log.error(err);
     const message = err instanceof Error ? err.message : "Not found";
     return reply.status(404).send({ message });
+  }
+}
+
+export async function updateWorkflowHandler(
+  request: FastifyRequest<{ Params: { id: string } }>,
+  reply: FastifyReply,
+) {
+  try {
+    const { workspaceId } = request.user as JwtPayload;
+    const workflowId = request.params.id;
+
+    const data = updateWorkflowSchema.parse(request.body);
+
+    const result = await workflowService.updateWorkflow(
+      workspaceId,
+      workflowId,
+      data,
+    );
+
+    return reply.send(result);
+  } catch (err: unknown) {
+    request.log.error(err);
+    const message = err instanceof Error ? err.message : "Bad request";
+    
+    if (message === "Workflow not found") {
+      return reply.status(404).send({ message });
+    }
+    
+    return reply.status(400).send({ message });
   }
 }
 

@@ -9,6 +9,16 @@ export const createWorkflowSchema = z.object({
 
 export type CreateWorkflowInput = z.infer<typeof createWorkflowSchema>;
 
+export const updateWorkflowSchema = z.object({
+  name: z.string().min(1).optional(),
+  triggerType: z.string().optional(),
+  isActive: z.boolean().optional(),
+  actionType: z.enum(["http_request", "filter"]).optional(),
+  config: z.record(z.string(), z.any()).optional(),
+});
+
+export type UpdateWorkflowInput = z.infer<typeof updateWorkflowSchema>;
+
 export interface HttpRequestConfig {
   url: string;
   method?: string;

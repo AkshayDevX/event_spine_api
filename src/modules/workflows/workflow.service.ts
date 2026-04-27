@@ -1,7 +1,8 @@
 import { db } from "../../../drizzle";
 import { workflows, workflowSteps } from "../../../drizzle/schema/workflow";
-import { CreateWorkflowInput } from "./workflow.schema";
+import { CreateWorkflowInput, UpdateWorkflowInput } from "./workflow.schema";
 import crypto from "crypto";
+import { count, and, ilike, eq } from "drizzle-orm";
 
 export class WorkflowService {
   async createWorkflow(workspaceId: string, data: CreateWorkflowInput) {
@@ -31,15 +32,90 @@ export class WorkflowService {
     });
   }
 
-  async listWorkflows(workspaceId: string) {
-    return await db.query.workflows.findMany({
+  async updateWorkflow(workspaceId: string, workflowId: string, data: UpdateWorkflowInput) {
+    return await db.transaction(async (tx) => {
+      // Update workflow basic details if provided
+      if (data.name !== undefined || data.triggerType !== undefined || data.isActive !== undefined) {
+        const [wf] = await tx
+          .update(workflows)
+          .set({
+            ...(data.name !== undefined && { name: data.name }),
+            ...(data.triggerType !== undefined && { triggerType: data.triggerType }),
+            ...(data.isActive !== undefined && { isActive: data.isActive }),
+            updatedAt: new Date(),
+          })
+          .where(and(eq(workflows.id, workflowId), eq(workflows.workspaceId, workspaceId)))
+          .returning();
+          
+        if (!wf) throw new Error("Workflow not found");
+      } else {
+        const wf = await tx.query.workflows.findFirst({
+          where: { id: workflowId, workspaceId }
+        });
+        if (!wf) throw new Error("Workflow not found");
+      }
+
+      // Update the first step if action details provided
+      if (data.actionType !== undefined || data.config !== undefined) {
+        const step = await tx.query.workflowSteps.findFirst({
+          where: { workflowId }
+        });
+        
+        if (step) {
+          await tx
+            .update(workflowSteps)
+            .set({
+              ...(data.actionType !== undefined && { actionType: data.actionType }),
+              ...(data.config !== undefined && { config: data.config }),
+              updatedAt: new Date(),
+            })
+            .where(eq(workflowSteps.id, step.id));
+        }
+      }
+
+      return await tx.query.workflows.findFirst({
+        where: { id: workflowId },
+        with: {
+          steps: true,
+        },
+      });
+    });
+  }
+
+  async listWorkflows(workspaceId: string, options: { page: number; limit: number; search?: string }) {
+    const { page, limit, search } = options;
+    const offset = (page - 1) * limit;
+
+    const data = await db.query.workflows.findMany({
       where: {
         workspaceId,
+        ...(search ? { name: { ilike: `%${search}%` } } : {}),
       },
       with: {
         steps: true,
       },
+      limit,
+      offset,
     });
+
+    const whereClause = search
+      ? and(eq(workflows.workspaceId, workspaceId), ilike(workflows.name, `%${search}%`))
+      : eq(workflows.workspaceId, workspaceId);
+
+    const [{ value: total }] = await db
+      .select({ value: count() })
+      .from(workflows)
+      .where(whereClause);
+
+    return {
+      workflows: data,
+      meta: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
   }
 
   async getWorkflow(workspaceId: string, workflowId: string) {
