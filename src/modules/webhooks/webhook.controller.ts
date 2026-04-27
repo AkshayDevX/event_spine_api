@@ -1,18 +1,11 @@
-import { FastifyBaseLogger, FastifyReply, FastifyRequest } from "fastify";
+import { FastifyReply, FastifyRequest } from "fastify";
 import { db } from "../../../drizzle";
-import { eq } from "drizzle-orm";
 import {
   webhookEvents,
   workflowRuns,
-  workflowRunSteps,
 } from "../../../drizzle/schema/workflow";
-import {
-  webhookPayloadSchema,
-  type WebhookPayload,
-  type WorkflowWithSteps,
-} from "./webhook.schema";
-import { executeStep, FilterFailedError } from "../workflows/executor";
-import { type StepConfig } from "../workflows/workflow.schema";
+import { webhookPayloadSchema } from "./webhook.schema";
+import { webhookQueue } from "../queue/queue";
 
 export async function handleWebhook(
   request: FastifyRequest<{ Params: { webhookPath: string } }>,
@@ -63,11 +56,8 @@ export async function handleWebhook(
       `[Webhook Recv] Workflow: ${workflow.name} | Run ID: ${run.id}`,
     );
 
-    // 4. Detached Asynchronous Execution (Fire-and-Forget)
-    // We do NOT await this promise!
-    executeWorkflowRun(request.log, workflow, run.id, payload).catch((err) => {
-      request.log.error(`Unhandled error in executeWorkflowRun: ${err}`);
-    });
+    // 4. Enqueue Asynchronous Execution via BullMQ
+    await webhookQueue.add("process-workflow", { runId: run.id });
 
     // 5. Return 202 Accepted Immediately
     return reply.status(202).send({
@@ -82,109 +72,3 @@ export async function handleWebhook(
   }
 }
 
-// Background Function for Asynchronous Execution
-async function executeWorkflowRun(
-  logger: FastifyBaseLogger,
-  workflow: WorkflowWithSteps,
-  runId: string,
-  payload: WebhookPayload,
-) {
-  try {
-    // Mark run as running
-    await db
-      .update(workflowRuns)
-      .set({ status: "running", startedAt: new Date() })
-      .where(eq(workflowRuns.id, runId));
-
-    // Execute each step
-    for (const step of workflow.steps) {
-      // Initialize step run
-      const [stepRun] = await db
-        .insert(workflowRunSteps)
-        .values({
-          workflowRunId: runId,
-          stepId: step.id,
-          status: "running",
-          startedAt: new Date(),
-        })
-        .returning();
-
-      try {
-        logger.info(
-          `Executing step ${step.orderNumber} - Type: ${step.actionType}`,
-        );
-
-        // Execute the real step logic
-        const stepResult = await executeStep(
-          step.actionType,
-          step.config as StepConfig,
-          payload,
-        );
-
-        // Mark step as completed
-        await db
-          .update(workflowRunSteps)
-          .set({
-            status: "completed",
-            completedAt: new Date(),
-            logs: stepResult,
-          })
-          .where(eq(workflowRunSteps.id, stepRun.id));
-      } catch (stepErr: unknown) {
-        if (stepErr instanceof FilterFailedError) {
-          // Filter failed - this is a graceful halt, not a system failure
-          logger.info(`Workflow halted by filter: ${stepErr.message}`);
-          await db
-            .update(workflowRunSteps)
-            .set({
-              status: "completed",
-              completedAt: new Date(),
-              logs: { message: stepErr.message, filter_passed: false },
-            })
-            .where(eq(workflowRunSteps.id, stepRun.id));
-
-          // Mark overall run as completed (since it successfully ran, but was filtered)
-          await db
-            .update(workflowRuns)
-            .set({ status: "completed", completedAt: new Date() })
-            .where(eq(workflowRuns.id, runId));
-
-          return; // Exit the entire executeWorkflowRun function gracefully
-        }
-
-        // True step failure
-        const errorMessage =
-          stepErr instanceof Error ? stepErr.message : "Unknown step error";
-        await db
-          .update(workflowRunSteps)
-          .set({
-            status: "failed",
-            completedAt: new Date(),
-            error: errorMessage,
-          })
-          .where(eq(workflowRunSteps.id, stepRun.id));
-
-        throw new Error(`Step execution failed: ${errorMessage}`, {
-          cause: stepErr,
-        });
-      }
-    }
-
-    // Mark overall run as completed
-    await db
-      .update(workflowRuns)
-      .set({ status: "completed", completedAt: new Date() })
-      .where(eq(workflowRuns.id, runId));
-
-    logger.info(`Workflow run ${runId} completed successfully.`);
-  } catch (runErr: unknown) {
-    const errorMessage =
-      runErr instanceof Error ? runErr.message : "Unknown error";
-    logger.error(`Workflow run ${runId} failed: ${errorMessage}`);
-    // Mark overall run as failed
-    await db
-      .update(workflowRuns)
-      .set({ status: "failed", completedAt: new Date() })
-      .where(eq(workflowRuns.id, runId));
-  }
-}

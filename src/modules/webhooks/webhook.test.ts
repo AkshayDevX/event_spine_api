@@ -32,6 +32,12 @@ vi.mock("bcrypt", () => ({
   },
 }));
 
+vi.mock("../queue/queue", () => ({
+  webhookQueue: {
+    add: vi.fn().mockResolvedValue({ id: "job-123" }),
+  },
+}));
+
 import { db } from "../../../drizzle";
 
 let app: FastifyInstance;

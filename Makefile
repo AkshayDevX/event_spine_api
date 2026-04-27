@@ -1,4 +1,4 @@
-.PHONY: setup up down restart logs db-shell db-push db-generate db-migrate db-studio clean db-delete
+.PHONY: setup up down restart logs db-shell db-push db-generate db-migrate db-studio clean db-delete dev dev-api dev-worker
 
 # Initial project setup
 setup:
@@ -25,6 +25,23 @@ restart:
 
 logs:
 	docker-compose logs -f
+
+# Dev commands
+dev:
+	npm run dev
+
+dev-api:
+	npm run dev:api
+
+dev-worker:
+	npm run dev:worker
+
+# Testing commands
+test:
+	npm run test
+
+test-watch:
+	npm run test:watch
 
 # Shell access to containers
 db-shell:

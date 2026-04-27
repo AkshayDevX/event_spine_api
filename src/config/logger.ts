@@ -1,7 +1,11 @@
-const isDev = process.env.NODE_ENV !== "production";
+import pino from "pino";
+import { env } from "./env";
+
+const isDev = env.NODE_ENV !== "production";
+const logLevel = env.LOG_LEVEL;
 
 export const loggerOptions = {
-  level: isDev ? "debug" : "info",
+  level: logLevel,
   ...(isDev && {
     transport: {
       target: "pino-pretty",
@@ -12,3 +16,5 @@ export const loggerOptions = {
     },
   }),
 };
+
+export const logger = pino(loggerOptions);

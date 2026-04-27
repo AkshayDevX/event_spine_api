@@ -7,3 +7,6 @@ node_modules
 
 # Test Data
 workflow-examples.json
+
+# Production Data
+dist
