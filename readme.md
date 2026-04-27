@@ -40,14 +40,17 @@ Established the foundational backend architecture, database schemas, and multi-t
 
 ### Phase 2: v2-async-engine (The Distributed System)
 
-_Status: Pending_
+_Status: Complete_
 
-Refactoring the execution flow from detached promises to reliable, distributed background jobs.
+Refactored the execution flow from detached promises to reliable, distributed background jobs, and implemented real-time execution streaming.
 
-- **Redis & BullMQ** — replace the fire-and-forget promise with a durable job queue for guaranteed delivery.
-- **Exponential Backoff Retries** — automatic retry with increasing delays for failed steps.
-- **Dead Letter Queues (DLQ)** — capture permanently failed events for manual inspection and replay.
-- **Publisher/Subscriber Decoupling** — separate the API server from the worker processes for independent scaling.
+- **Redis & BullMQ** — replaced the fire-and-forget promise with a durable job queue for guaranteed delivery.
+- **Background Worker** — separated the API server from the worker processes for independent scaling.
+- **WebSockets & Pub/Sub** — built real-time workflow progress streaming using `@fastify/websocket` and Redis Pub/Sub.
+- **Dockerized Redis** — added persistent Redis AOF configurations to `compose.yml` with health checks.
+- **Dev Tooling** — optimized multi-process development with `concurrently` and an enhanced `Makefile`.
+
+👉 **[Read the full feature logs for v2-async-engine here.](./docs/v2-async-engine.md)**
 
 ---
 

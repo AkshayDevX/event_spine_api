@@ -20,6 +20,7 @@ export const QUEUE_NAME = "webhooks";
 
 export type WebhookJobData = {
   runId: string;
+  workflowId: string;
 };
 
 export const webhookQueue = new Queue<WebhookJobData, void, string>(

@@ -11,6 +11,7 @@ import { type StepConfig } from "../workflows/workflow.schema";
 import { env } from "../../config/env";
 import { QUEUE_NAME, type WebhookJobData } from "./queue";
 import { logger } from "../../config/logger";
+import { publishLiveEvent } from "./pubsub";
 
 const connection = new Redis(env.REDIS_URL, {
   maxRetriesPerRequest: null,
@@ -19,7 +20,7 @@ const connection = new Redis(env.REDIS_URL, {
 export const webhookWorker = new Worker<WebhookJobData, void, string>(
   QUEUE_NAME,
   async (job: Job<WebhookJobData>) => {
-    const { runId } = job.data;
+    const { runId, workflowId } = job.data;
 
     // Fetch the run, including the workflow, steps, and webhook event payload
     const run = await db.query.workflowRuns.findFirst({
@@ -48,6 +49,11 @@ export const webhookWorker = new Worker<WebhookJobData, void, string>(
         .update(workflowRuns)
         .set({ status: "running", startedAt: new Date() })
         .where(eq(workflowRuns.id, runId));
+
+      await publishLiveEvent(workflowId, {
+        type: "workflow.started",
+        runId,
+      });
     }
 
     // Execute each step
@@ -94,6 +100,13 @@ export const webhookWorker = new Worker<WebhookJobData, void, string>(
           `[Job ${job.id}] Executing step ${step.orderNumber} - Type: ${step.actionType}`,
         );
 
+        await publishLiveEvent(workflowId, {
+          type: "step.running",
+          runId,
+          stepId: step.id,
+          orderNumber: Number(step.orderNumber),
+        });
+
         // Execute the real step logic
         const stepResult = await executeStep(
           step.actionType,
@@ -110,6 +123,13 @@ export const webhookWorker = new Worker<WebhookJobData, void, string>(
             logs: stepResult,
           })
           .where(eq(workflowRunSteps.id, stepRun.id));
+
+        await publishLiveEvent(workflowId, {
+          type: "step.completed",
+          runId,
+          stepId: step.id,
+          orderNumber: Number(step.orderNumber),
+        });
       } catch (stepErr: unknown) {
         if (stepErr instanceof FilterFailedError) {
           // Filter failed - this is a graceful halt, not a system failure
@@ -146,6 +166,14 @@ export const webhookWorker = new Worker<WebhookJobData, void, string>(
           })
           .where(eq(workflowRunSteps.id, stepRun.id));
 
+        await publishLiveEvent(workflowId, {
+          type: "step.failed",
+          runId,
+          stepId: step.id,
+          orderNumber: Number(step.orderNumber),
+          error: errorMessage,
+        });
+
         throw new Error(`Step execution failed: ${errorMessage}`, {
           cause: stepErr,
         });
@@ -157,6 +185,11 @@ export const webhookWorker = new Worker<WebhookJobData, void, string>(
       .update(workflowRuns)
       .set({ status: "completed", completedAt: new Date() })
       .where(eq(workflowRuns.id, runId));
+
+    await publishLiveEvent(workflowId, {
+      type: "workflow.completed",
+      runId,
+    });
 
     logger.info(
       `[Job ${job.id}] Workflow run ${runId} completed successfully.`,
@@ -170,11 +203,17 @@ webhookWorker.on("failed", async (job, err) => {
     logger.error(`[Job ${job.id}] Failed with error: ${err.message}`);
     // Update the overall run to failed if it's the last attempt, or just let the step error reflect it
     if (job.attemptsMade >= (job.opts.attempts || 1)) {
-      const runId = job.data.runId;
+      const { runId, workflowId } = job.data;
       await db
         .update(workflowRuns)
         .set({ status: "failed", completedAt: new Date() })
         .where(eq(workflowRuns.id, runId));
+
+      await publishLiveEvent(workflowId, {
+        type: "workflow.failed",
+        runId,
+        error: err.message,
+      });
     }
   }
 });

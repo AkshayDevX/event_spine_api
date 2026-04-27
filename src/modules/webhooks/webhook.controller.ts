@@ -57,7 +57,10 @@ export async function handleWebhook(
     );
 
     // 4. Enqueue Asynchronous Execution via BullMQ
-    await webhookQueue.add("process-workflow", { runId: run.id });
+    await webhookQueue.add("process-workflow", {
+      runId: run.id,
+      workflowId: workflow.id,
+    });
 
     // 5. Return 202 Accepted Immediately
     return reply.status(202).send({
