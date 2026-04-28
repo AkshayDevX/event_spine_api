@@ -121,14 +121,37 @@ export class WorkflowService {
     return workflow;
   }
 
-  async getWorkflowRuns(workspaceId: string, workflowId: string) {
+  async getWorkflowRuns(
+    workspaceId: string,
+    workflowId: string,
+    options: { page?: number; limit?: number } = {},
+  ) {
     // First verify workflow exists and belongs to workspace
     await this.getWorkflow(workspaceId, workflowId);
 
-    return await db.query.workflowRuns.findMany({
+    const page = options.page || 1;
+    const limit = options.limit || 10;
+    const offset = (page - 1) * limit;
+
+    const [totalCountResult] = await db
+      .select({ count: count() })
+      .from(workflowRuns)
+      .where(eq(workflowRuns.workflowId, workflowId));
+
+    const total = totalCountResult.count;
+    const totalPages = Math.ceil(total / limit);
+
+    const runs = await db.query.workflowRuns.findMany({
       where: { workflowId },
       orderBy: { createdAt: "desc" },
+      limit,
+      offset,
     });
+
+    return {
+      runs,
+      meta: { total, page, limit, totalPages },
+    };
   }
 
   async getAllWorkspaceRuns(

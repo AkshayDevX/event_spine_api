@@ -144,6 +144,13 @@ export default async function workflowRoutes(app: FastifyInstance) {
             id: { type: "string", format: "uuid" },
           },
         },
+        querystring: {
+          type: "object",
+          properties: {
+            page: { type: "string" },
+            limit: { type: "string" },
+          },
+        },
       },
     },
     getWorkflowRunsHandler,

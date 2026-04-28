@@ -95,15 +95,23 @@ export async function updateWorkflowHandler(
 }
 
 export async function getWorkflowRunsHandler(
-  request: FastifyRequest<{ Params: { id: string } }>,
+  request: FastifyRequest<{
+    Params: { id: string };
+    Querystring: { page?: string; limit?: string };
+  }>,
   reply: FastifyReply,
 ) {
   try {
     const { workspaceId } = request.user as JwtPayload;
     const workflowId = request.params.id;
+    const page = parseInt(request.query.page || "1", 10);
+    const limit = parseInt(request.query.limit || "10", 10);
 
-    const runs = await workflowService.getWorkflowRuns(workspaceId, workflowId);
-    return reply.send({ runs });
+    const result = await workflowService.getWorkflowRuns(workspaceId, workflowId, {
+      page,
+      limit,
+    });
+    return reply.send(result);
   } catch (err: unknown) {
     request.log.error(err);
     const message = err instanceof Error ? err.message : "Not found";
