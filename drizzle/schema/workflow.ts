@@ -15,6 +15,7 @@ export const WorkflowRunStatusEnum = pgEnum("status", [
   "running",
   "completed",
   "failed",
+  "halted",
 ]);
 
 export const actionTypeEnum = pgEnum("action_type", ["http_request", "filter"]);

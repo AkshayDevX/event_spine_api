@@ -56,8 +56,12 @@ export const webhookWorker = new Worker<WebhookJobData, void, string>(
       });
     }
 
-    // Execute each step
-    for (const step of workflow.steps) {
+    // Execute each step in the correct order
+    const sortedSteps = [...workflow.steps].sort(
+      (a, b) => Number(a.orderNumber) - Number(b.orderNumber),
+    );
+
+    for (const step of sortedSteps) {
       // Idempotency: Check if step run already exists
       let stepRun = await db.query.workflowRunSteps.findFirst({
         where: {
@@ -139,17 +143,22 @@ export const webhookWorker = new Worker<WebhookJobData, void, string>(
           await db
             .update(workflowRunSteps)
             .set({
-              status: "completed",
+              status: "halted",
               completedAt: new Date(),
               logs: { message: stepErr.message, filter_passed: false },
             })
             .where(eq(workflowRunSteps.id, stepRun.id));
 
-          // Mark overall run as completed (since it successfully ran, but was filtered)
+          // Mark overall run as halted
           await db
             .update(workflowRuns)
-            .set({ status: "completed", completedAt: new Date() })
+            .set({ status: "halted", completedAt: new Date() })
             .where(eq(workflowRuns.id, runId));
+
+          await publishLiveEvent(workflowId, {
+            type: "workflow.halted",
+            runId,
+          });
 
           return; // Exit the entire job gracefully
         }

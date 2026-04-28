@@ -14,6 +14,7 @@ export type LiveEventPayload =
   | { type: "workflow.started"; runId: string }
   | { type: "workflow.completed"; runId: string }
   | { type: "workflow.failed"; runId: string; error: string }
+  | { type: "workflow.halted"; runId: string }
   | {
       type: "step.running";
       runId: string;
@@ -43,5 +44,7 @@ export async function publishLiveEvent(
   event: LiveEventPayload,
 ) {
   const channel = getWorkflowChannel(workflowId);
+  const allChannel = getWorkflowChannel("all");
   await pubClient.publish(channel, JSON.stringify(event));
+  await pubClient.publish(allChannel, JSON.stringify(event));
 }
