@@ -41,7 +41,7 @@ afterAll(async () => {
 });
 
 describe("Auth Routes", () => {
-  describe("POST /v1/auth/signup", () => {
+  describe("POST /api/v1/auth/signup", () => {
     it("should return 201 with token on successful signup", async () => {
       const mockUser = {
         id: "user-123",
@@ -69,7 +69,7 @@ describe("Auth Routes", () => {
 
       const response = await app.inject({
         method: "POST",
-        url: "/v1/auth/signup",
+        url: "/api/v1/auth/signup",
         payload: {
           email: "test@test.com",
           password: "password123",
@@ -88,7 +88,7 @@ describe("Auth Routes", () => {
     it("should return 400 when required fields are missing", async () => {
       const response = await app.inject({
         method: "POST",
-        url: "/v1/auth/signup",
+        url: "/api/v1/auth/signup",
         payload: {
           email: "test@test.com",
           // missing password, fullName, workspaceName
@@ -99,7 +99,7 @@ describe("Auth Routes", () => {
     });
   });
 
-  describe("POST /v1/auth/login", () => {
+  describe("POST /api/v1/auth/login", () => {
     it("should return token on valid credentials", async () => {
       const mockUser = {
         id: "user-123",
@@ -116,7 +116,7 @@ describe("Auth Routes", () => {
 
       const response = await app.inject({
         method: "POST",
-        url: "/v1/auth/login",
+        url: "/api/v1/auth/login",
         payload: {
           email: "test@test.com",
           password: "password123",
@@ -133,7 +133,7 @@ describe("Auth Routes", () => {
 
       const response = await app.inject({
         method: "POST",
-        url: "/v1/auth/login",
+        url: "/api/v1/auth/login",
         payload: {
           email: "wrong@test.com",
           password: "wrongpassword",

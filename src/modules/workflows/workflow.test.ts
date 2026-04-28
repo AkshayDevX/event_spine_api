@@ -13,6 +13,13 @@ vi.mock("../../../drizzle", () => ({
     },
     transaction: vi.fn(),
     insert: vi.fn(),
+    select: vi.fn().mockReturnValue({
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockResolvedValue([{ value: 2 }])
+      })
+    }),
+    update: vi.fn(),
+    delete: vi.fn(),
   },
 }));
 
@@ -45,15 +52,14 @@ afterAll(async () => {
 });
 
 describe("Workflow Routes", () => {
-  describe("POST /v1/workflows", () => {
+  describe("POST /api/v1/workflows", () => {
     it("should return 401 without auth token", async () => {
       const response = await app.inject({
         method: "POST",
-        url: "/v1/workflows",
+        url: "/api/v1/workflows",
         payload: {
           name: "Test Workflow",
-          actionType: "http_request",
-          config: { url: "https://example.com" },
+          steps: [{ actionType: "http_request", config: { url: "https://example.com" } }],
         },
       });
 
@@ -67,11 +73,11 @@ describe("Workflow Routes", () => {
         webhookPath: "abc123",
         workspaceId: "ws-123",
       };
-      const mockStep = {
+      const mockSteps = [{
         id: "step-123",
         actionType: "http_request",
         config: { url: "https://example.com" },
-      };
+      }];
 
       vi.mocked(db.transaction).mockImplementation(async (fn) => {
         return fn({
@@ -80,7 +86,7 @@ describe("Workflow Routes", () => {
               returning: vi
                 .fn()
                 .mockResolvedValueOnce([mockWorkflow])
-                .mockResolvedValueOnce([mockStep]),
+                .mockResolvedValueOnce(mockSteps),
             }),
           }),
         } as never);
@@ -88,23 +94,22 @@ describe("Workflow Routes", () => {
 
       const response = await app.inject({
         method: "POST",
-        url: "/v1/workflows",
+        url: "/api/v1/workflows",
         headers: { authorization: `Bearer ${authToken}` },
         payload: {
           name: "Test Workflow",
-          actionType: "http_request",
-          config: { url: "https://example.com" },
+          steps: [{ actionType: "http_request", config: { url: "https://example.com" } }],
         },
       });
 
       expect(response.statusCode).toBe(201);
       const body = response.json();
       expect(body.workflow.name).toBe("Test Workflow");
-      expect(body.step.actionType).toBe("http_request");
+      expect(body.steps[0].actionType).toBe("http_request");
     });
   });
 
-  describe("GET /v1/workflows", () => {
+  describe("GET /api/v1/workflows", () => {
     it("should return list of workflows", async () => {
       const mockWorkflows = [
         {
@@ -125,7 +130,7 @@ describe("Workflow Routes", () => {
 
       const response = await app.inject({
         method: "GET",
-        url: "/v1/workflows",
+        url: "/api/v1/workflows",
         headers: { authorization: `Bearer ${authToken}` },
       });
 
@@ -135,13 +140,13 @@ describe("Workflow Routes", () => {
     });
   });
 
-  describe("GET /v1/workflows/:id", () => {
+  describe("GET /api/v1/workflows/:id", () => {
     it("should return 404 when workflow not found", async () => {
       vi.mocked(db.query.workflows.findFirst).mockResolvedValue(undefined);
 
       const response = await app.inject({
         method: "GET",
-        url: "/v1/workflows/00000000-0000-0000-0000-000000000000",
+        url: "/api/v1/workflows/00000000-0000-0000-0000-000000000000",
         headers: { authorization: `Bearer ${authToken}` },
       });
 

@@ -1,6 +1,6 @@
 import { db } from "../../../drizzle";
 import { workflows, workflowSteps } from "../../../drizzle/schema/workflow";
-import { CreateWorkflowInput, UpdateWorkflowInput } from "./workflow.schema";
+import { CreateWorkflowInput, UpdateWorkflowInput, AddStepInput, UpdateStepInput } from "./workflow.schema";
 import crypto from "crypto";
 import { count, and, ilike, eq } from "drizzle-orm";
 
@@ -19,16 +19,19 @@ export class WorkflowService {
         })
         .returning();
 
-      const [step] = await tx
+      const stepsToInsert = data.steps.map((step, index) => ({
+        workflowId: workflow.id,
+        actionType: step.actionType,
+        orderNumber: String(index + 1),
+        config: step.config,
+      }));
+
+      const insertedSteps = await tx
         .insert(workflowSteps)
-        .values({
-          workflowId: workflow.id,
-          actionType: data.actionType,
-          config: data.config,
-        })
+        .values(stepsToInsert)
         .returning();
 
-      return { workflow, step };
+      return { workflow, steps: insertedSteps };
     });
   }
 
@@ -53,24 +56,6 @@ export class WorkflowService {
           where: { id: workflowId, workspaceId }
         });
         if (!wf) throw new Error("Workflow not found");
-      }
-
-      // Update the first step if action details provided
-      if (data.actionType !== undefined || data.config !== undefined) {
-        const step = await tx.query.workflowSteps.findFirst({
-          where: { workflowId }
-        });
-        
-        if (step) {
-          await tx
-            .update(workflowSteps)
-            .set({
-              ...(data.actionType !== undefined && { actionType: data.actionType }),
-              ...(data.config !== undefined && { config: data.config }),
-              updatedAt: new Date(),
-            })
-            .where(eq(workflowSteps.id, step.id));
-        }
       }
 
       return await tx.query.workflows.findFirst({
@@ -172,6 +157,56 @@ export class WorkflowService {
     }
 
     return runDetails;
+  }
+
+  async addStep(workspaceId: string, workflowId: string, data: AddStepInput) {
+    await this.getWorkflow(workspaceId, workflowId); // Verify ownership
+
+    const [step] = await db
+      .insert(workflowSteps)
+      .values({
+        workflowId,
+        actionType: data.actionType,
+        orderNumber: data.orderNumber || "1",
+        config: data.config,
+      })
+      .returning();
+
+    return step;
+  }
+
+  async updateStep(workspaceId: string, workflowId: string, stepId: string, data: UpdateStepInput) {
+    await this.getWorkflow(workspaceId, workflowId); // Verify ownership
+
+    const [step] = await db
+      .update(workflowSteps)
+      .set({
+        ...(data.actionType !== undefined && { actionType: data.actionType }),
+        ...(data.orderNumber !== undefined && { orderNumber: data.orderNumber }),
+        ...(data.config !== undefined && { config: data.config }),
+        updatedAt: new Date(),
+      })
+      .where(and(eq(workflowSteps.id, stepId), eq(workflowSteps.workflowId, workflowId)))
+      .returning();
+
+    if (!step) {
+      throw new Error("Step not found");
+    }
+
+    return step;
+  }
+
+  async deleteStep(workspaceId: string, workflowId: string, stepId: string) {
+    await this.getWorkflow(workspaceId, workflowId); // Verify ownership
+
+    const [deletedStep] = await db
+      .delete(workflowSteps)
+      .where(and(eq(workflowSteps.id, stepId), eq(workflowSteps.workflowId, workflowId)))
+      .returning();
+
+    if (!deletedStep) {
+      throw new Error("Step not found");
+    }
   }
 }
 

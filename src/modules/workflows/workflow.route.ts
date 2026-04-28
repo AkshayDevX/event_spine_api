@@ -6,6 +6,9 @@ import {
   getWorkflowRunsHandler,
   getWorkflowRunDetailsHandler,
   updateWorkflowHandler,
+  addStepHandler,
+  updateStepHandler,
+  deleteStepHandler,
 } from "./workflow.controller";
 
 export default async function workflowRoutes(app: FastifyInstance) {
@@ -25,12 +28,22 @@ export default async function workflowRoutes(app: FastifyInstance) {
         security: [{ bearerAuth: [] }],
         body: {
           type: "object",
-          required: ["name", "actionType", "config"],
+          required: ["name", "steps"],
           properties: {
             name: { type: "string" },
             triggerType: { type: "string", default: "webhook" },
-            actionType: { type: "string" },
-            config: { type: "object", additionalProperties: true },
+            steps: {
+              type: "array",
+              minItems: 1,
+              items: {
+                type: "object",
+                required: ["actionType", "config"],
+                properties: {
+                  actionType: { type: "string" },
+                  config: { type: "object", additionalProperties: true },
+                },
+              },
+            },
           },
         },
       },
@@ -92,8 +105,6 @@ export default async function workflowRoutes(app: FastifyInstance) {
             name: { type: "string" },
             triggerType: { type: "string" },
             isActive: { type: "boolean" },
-            actionType: { type: "string" },
-            config: { type: "object", additionalProperties: true },
           },
         },
       },
@@ -134,5 +145,75 @@ export default async function workflowRoutes(app: FastifyInstance) {
       },
     },
     getWorkflowRunDetailsHandler,
+  );
+
+  app.post(
+    "/:id/steps",
+    {
+      schema: {
+        tags: ["workflows"],
+        security: [{ bearerAuth: [] }],
+        params: {
+          type: "object",
+          properties: {
+            id: { type: "string", format: "uuid" },
+          },
+        },
+        body: {
+          type: "object",
+          required: ["actionType", "config"],
+          properties: {
+            actionType: { type: "string" },
+            orderNumber: { type: "string" },
+            config: { type: "object", additionalProperties: true },
+          },
+        },
+      },
+    },
+    addStepHandler,
+  );
+
+  app.patch(
+    "/:id/steps/:stepId",
+    {
+      schema: {
+        tags: ["workflows"],
+        security: [{ bearerAuth: [] }],
+        params: {
+          type: "object",
+          properties: {
+            id: { type: "string", format: "uuid" },
+            stepId: { type: "string", format: "uuid" },
+          },
+        },
+        body: {
+          type: "object",
+          properties: {
+            actionType: { type: "string" },
+            orderNumber: { type: "string" },
+            config: { type: "object", additionalProperties: true },
+          },
+        },
+      },
+    },
+    updateStepHandler,
+  );
+
+  app.delete(
+    "/:id/steps/:stepId",
+    {
+      schema: {
+        tags: ["workflows"],
+        security: [{ bearerAuth: [] }],
+        params: {
+          type: "object",
+          properties: {
+            id: { type: "string", format: "uuid" },
+            stepId: { type: "string", format: "uuid" },
+          },
+        },
+      },
+    },
+    deleteStepHandler,
   );
 }

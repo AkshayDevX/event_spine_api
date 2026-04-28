@@ -52,13 +52,13 @@ afterAll(async () => {
 });
 
 describe("Webhook Routes", () => {
-  describe("POST /v1/hooks/:webhookPath", () => {
+  describe("POST /api/v1/hooks/:webhookPath", () => {
     it("should return 404 for unknown webhook path", async () => {
       vi.mocked(db.query.workflows.findFirst).mockResolvedValue(undefined);
 
       const response = await app.inject({
         method: "POST",
-        url: "/v1/hooks/unknown-path",
+        url: "/api/v1/hooks/unknown-path",
         payload: { event: "test" },
       });
 
@@ -77,7 +77,7 @@ describe("Webhook Routes", () => {
 
       const response = await app.inject({
         method: "POST",
-        url: "/v1/hooks/inactive-path",
+        url: "/api/v1/hooks/inactive-path",
         payload: { event: "test" },
       });
 
@@ -116,7 +116,7 @@ describe("Webhook Routes", () => {
 
       const response = await app.inject({
         method: "POST",
-        url: "/v1/hooks/valid-path",
+        url: "/api/v1/hooks/valid-path",
         payload: { event: "payment.succeeded" },
       });
 

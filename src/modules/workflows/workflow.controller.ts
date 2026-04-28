@@ -1,6 +1,6 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { workflowService } from "./workflow.service";
-import { createWorkflowSchema, updateWorkflowSchema } from "./workflow.schema";
+import { createWorkflowSchema, updateWorkflowSchema, addStepSchema, updateStepSchema } from "./workflow.schema";
 
 interface JwtPayload {
   id: string;
@@ -28,13 +28,19 @@ export async function createWorkflowHandler(
 }
 
 export async function listWorkflowsHandler(
-  request: FastifyRequest<{ Querystring: { page: number; limit: number; search?: string } }>,
+  request: FastifyRequest<{
+    Querystring: { page: number; limit: number; search?: string };
+  }>,
   reply: FastifyReply,
 ) {
   try {
     const { workspaceId } = request.user as JwtPayload;
     const { page, limit, search } = request.query;
-    const result = await workflowService.listWorkflows(workspaceId, { page, limit, search });
+    const result = await workflowService.listWorkflows(workspaceId, {
+      page,
+      limit,
+      search,
+    });
     return reply.send(result);
   } catch (err: unknown) {
     request.log.error(err);
@@ -51,7 +57,7 @@ export async function getWorkflowHandler(
     const workflowId = request.params.id;
 
     const workflow = await workflowService.getWorkflow(workspaceId, workflowId);
-    return reply.send(workflow);
+    return reply.send({ workflow });
   } catch (err: unknown) {
     request.log.error(err);
     const message = err instanceof Error ? err.message : "Not found";
@@ -79,11 +85,11 @@ export async function updateWorkflowHandler(
   } catch (err: unknown) {
     request.log.error(err);
     const message = err instanceof Error ? err.message : "Bad request";
-    
+
     if (message === "Workflow not found") {
       return reply.status(404).send({ message });
     }
-    
+
     return reply.status(400).send({ message });
   }
 }
@@ -123,5 +129,69 @@ export async function getWorkflowRunDetailsHandler(
     request.log.error(err);
     const message = err instanceof Error ? err.message : "Not found";
     return reply.status(404).send({ message });
+  }
+}
+
+export async function addStepHandler(
+  request: FastifyRequest<{ Params: { id: string } }>,
+  reply: FastifyReply,
+) {
+  try {
+    const { workspaceId } = request.user as JwtPayload;
+    const workflowId = request.params.id;
+
+    const data = addStepSchema.parse(request.body);
+
+    const step = await workflowService.addStep(workspaceId, workflowId, data);
+
+    return reply.status(201).send(step);
+  } catch (err: unknown) {
+    request.log.error(err);
+    const message = err instanceof Error ? err.message : "Bad request";
+    return reply.status(400).send({ message });
+  }
+}
+
+export async function updateStepHandler(
+  request: FastifyRequest<{ Params: { id: string; stepId: string } }>,
+  reply: FastifyReply,
+) {
+  try {
+    const { workspaceId } = request.user as JwtPayload;
+    const { id: workflowId, stepId } = request.params;
+
+    const data = updateStepSchema.parse(request.body);
+
+    const step = await workflowService.updateStep(workspaceId, workflowId, stepId, data);
+
+    return reply.send(step);
+  } catch (err: unknown) {
+    request.log.error(err);
+    const message = err instanceof Error ? err.message : "Bad request";
+    if (message === "Workflow not found" || message === "Step not found") {
+      return reply.status(404).send({ message });
+    }
+    return reply.status(400).send({ message });
+  }
+}
+
+export async function deleteStepHandler(
+  request: FastifyRequest<{ Params: { id: string; stepId: string } }>,
+  reply: FastifyReply,
+) {
+  try {
+    const { workspaceId } = request.user as JwtPayload;
+    const { id: workflowId, stepId } = request.params;
+
+    await workflowService.deleteStep(workspaceId, workflowId, stepId);
+
+    return reply.status(204).send();
+  } catch (err: unknown) {
+    request.log.error(err);
+    const message = err instanceof Error ? err.message : "Bad request";
+    if (message === "Workflow not found" || message === "Step not found") {
+      return reply.status(404).send({ message });
+    }
+    return reply.status(400).send({ message });
   }
 }
