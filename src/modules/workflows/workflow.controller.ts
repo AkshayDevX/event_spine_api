@@ -111,6 +111,31 @@ export async function getWorkflowRunsHandler(
   }
 }
 
+export async function getAllWorkspaceRunsHandler(
+  request: FastifyRequest<{
+    Querystring: { workflowId?: string; page?: string; limit?: string };
+  }>,
+  reply: FastifyReply,
+) {
+  try {
+    const { workspaceId } = request.user as JwtPayload;
+    const page = parseInt(request.query.page || "1", 10);
+    const limit = parseInt(request.query.limit || "10", 10);
+    const workflowId = request.query.workflowId;
+
+    const result = await workflowService.getAllWorkspaceRuns(workspaceId, {
+      workflowId,
+      page,
+      limit,
+    });
+    return reply.send(result);
+  } catch (err: unknown) {
+    request.log.error(err);
+    const message = err instanceof Error ? err.message : "Bad request";
+    return reply.status(400).send({ message });
+  }
+}
+
 export async function getWorkflowRunDetailsHandler(
   request: FastifyRequest<{ Params: { id: string; runId: string } }>,
   reply: FastifyReply,

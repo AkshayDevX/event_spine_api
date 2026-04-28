@@ -1,8 +1,8 @@
 import { db } from "../../../drizzle";
-import { workflows, workflowSteps } from "../../../drizzle/schema/workflow";
+import { workflows, workflowSteps, workflowRuns } from "../../../drizzle/schema/workflow";
 import { CreateWorkflowInput, UpdateWorkflowInput, AddStepInput, UpdateStepInput } from "./workflow.schema";
 import crypto from "crypto";
-import { count, and, ilike, eq } from "drizzle-orm";
+import { count, and, ilike, eq, inArray } from "drizzle-orm";
 
 export class WorkflowService {
   async createWorkflow(workspaceId: string, data: CreateWorkflowInput) {
@@ -131,6 +131,60 @@ export class WorkflowService {
     });
   }
 
+  async getAllWorkspaceRuns(
+    workspaceId: string,
+    filters: { workflowId?: string; page?: number; limit?: number } = {},
+  ) {
+    const page = filters.page || 1;
+    const limit = filters.limit || 10;
+    const offset = (page - 1) * limit;
+
+    // Get workflow IDs for this workspace
+    const workspaceWorkflows = await db.query.workflows.findMany({
+      where: { workspaceId },
+      columns: { id: true },
+    });
+
+    const validWorkflowIds = workspaceWorkflows.map((w) => w.id);
+    if (validWorkflowIds.length === 0) {
+      return { runs: [], meta: { total: 0, page, limit, totalPages: 0 } };
+    }
+
+    let queryWorkflowIds = validWorkflowIds;
+    if (filters.workflowId && validWorkflowIds.includes(filters.workflowId)) {
+      queryWorkflowIds = [filters.workflowId];
+    } else if (filters.workflowId) {
+      return { runs: [], meta: { total: 0, page, limit, totalPages: 0 } };
+    }
+
+    const whereClause = inArray(workflowRuns.workflowId, queryWorkflowIds);
+
+    const [totalCountResult] = await db
+      .select({ count: count() })
+      .from(workflowRuns)
+      .where(whereClause);
+
+    const total = totalCountResult.count;
+    const totalPages = Math.ceil(total / limit);
+
+    const runs = await db.query.workflowRuns.findMany({
+      where: { workflowId: { in: queryWorkflowIds } },
+      orderBy: { createdAt: "desc" },
+      limit,
+      offset,
+      with: {
+        workflow: {
+          columns: { name: true, triggerType: true, webhookPath: true },
+        },
+      },
+    });
+
+    return {
+      runs,
+      meta: { total, page, limit, totalPages },
+    };
+  }
+
   async getWorkflowRunDetails(
     workspaceId: string,
     workflowId: string,
@@ -142,6 +196,7 @@ export class WorkflowService {
     const runDetails = await db.query.workflowRuns.findFirst({
       where: { workflowId, id: runId },
       with: {
+        workflow: true,
         event: true,
         steps: {
           orderBy: { createdAt: "asc" },

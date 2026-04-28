@@ -9,6 +9,7 @@ import {
   addStepHandler,
   updateStepHandler,
   deleteStepHandler,
+  getAllWorkspaceRunsHandler,
 } from "./workflow.controller";
 
 export default async function workflowRoutes(app: FastifyInstance) {
@@ -110,6 +111,25 @@ export default async function workflowRoutes(app: FastifyInstance) {
       },
     },
     updateWorkflowHandler,
+  );
+
+  app.get(
+    "/runs/all",
+    {
+      schema: {
+        tags: ["workflows"],
+        security: [{ bearerAuth: [] }],
+        querystring: {
+          type: "object",
+          properties: {
+            workflowId: { type: "string" },
+            page: { type: "string" },
+            limit: { type: "string" },
+          },
+        },
+      },
+    },
+    getAllWorkspaceRunsHandler,
   );
 
   app.get(
