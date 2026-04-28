@@ -26,9 +26,18 @@ function getNestedValue(obj: Record<string, unknown>, path: string): unknown {
 }
 
 async function handleHttpRequest(config: HttpRequestConfig, payload: Payload) {
-  const { url, method = "POST", headers = {} } = config;
+  const { url, method = "POST", headers = {}, body: customBody } = config;
 
   if (!url) throw new Error("HTTP Request requires a 'url' in config");
+
+  let finalBody: string | undefined = undefined;
+  if (["POST", "PUT", "PATCH"].includes(method.toUpperCase())) {
+    if (customBody) {
+      finalBody = typeof customBody === "string" ? customBody : JSON.stringify(customBody);
+    } else {
+      finalBody = JSON.stringify(payload);
+    }
+  }
 
   const response = await fetch(url, {
     method,
@@ -36,9 +45,7 @@ async function handleHttpRequest(config: HttpRequestConfig, payload: Payload) {
       "Content-Type": "application/json",
       ...headers,
     },
-    body: ["POST", "PUT", "PATCH"].includes(method.toUpperCase())
-      ? JSON.stringify(payload)
-      : undefined,
+    body: finalBody,
   });
 
   const responseText = await response.text();
