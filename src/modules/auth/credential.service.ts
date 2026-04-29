@@ -134,7 +134,9 @@ export class CredentialService {
     const [session] = await db
       .update(refreshTokens)
       .set({ revokedAt: new Date() })
-      .where(and(eq(refreshTokens.userId, userId), eq(refreshTokens.id, sessionId)))
+      .where(
+        and(eq(refreshTokens.userId, userId), eq(refreshTokens.id, sessionId)),
+      )
       .returning();
 
     if (!session) {
@@ -193,8 +195,10 @@ export class CredentialService {
   async revokeApiKey(workspaceId: string, apiKeyId: string) {
     const [apiKey] = await db
       .update(apiKeys)
-      .set({ isActive: false, revokedAt: new Date(), updatedAt: new Date() })
-      .where(and(eq(apiKeys.id, apiKeyId), eq(apiKeys.workspaceId, workspaceId)))
+      .set({ isActive: false, revokedAt: new Date() })
+      .where(
+        and(eq(apiKeys.id, apiKeyId), eq(apiKeys.workspaceId, workspaceId)),
+      )
       .returning();
 
     if (!apiKey) {
@@ -218,7 +222,7 @@ export class CredentialService {
 
     await db
       .update(apiKeys)
-      .set({ lastUsedAt: new Date(), updatedAt: new Date() })
+      .set({ lastUsedAt: new Date() })
       .where(eq(apiKeys.id, apiKey.id));
 
     return {

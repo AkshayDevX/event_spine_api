@@ -1,6 +1,15 @@
 import { db } from "../../../drizzle";
-import { workflows, workflowSteps, workflowRuns } from "../../../drizzle/schema/workflow";
-import { CreateWorkflowInput, UpdateWorkflowInput, AddStepInput, UpdateStepInput } from "./workflow.schema";
+import {
+  workflows,
+  workflowSteps,
+  workflowRuns,
+} from "../../../drizzle/schema/workflow";
+import {
+  CreateWorkflowInput,
+  UpdateWorkflowInput,
+  AddStepInput,
+  UpdateStepInput,
+} from "./workflow.schema";
 import crypto from "crypto";
 import { count, and, ilike, eq, inArray } from "drizzle-orm";
 
@@ -35,25 +44,39 @@ export class WorkflowService {
     });
   }
 
-  async updateWorkflow(workspaceId: string, workflowId: string, data: UpdateWorkflowInput) {
+  async updateWorkflow(
+    workspaceId: string,
+    workflowId: string,
+    data: UpdateWorkflowInput,
+  ) {
     return await db.transaction(async (tx) => {
       // Update workflow basic details if provided
-      if (data.name !== undefined || data.triggerType !== undefined || data.isActive !== undefined) {
+      if (
+        data.name !== undefined ||
+        data.triggerType !== undefined ||
+        data.isActive !== undefined
+      ) {
         const [wf] = await tx
           .update(workflows)
           .set({
             ...(data.name !== undefined && { name: data.name }),
-            ...(data.triggerType !== undefined && { triggerType: data.triggerType }),
+            ...(data.triggerType !== undefined && {
+              triggerType: data.triggerType,
+            }),
             ...(data.isActive !== undefined && { isActive: data.isActive }),
-            updatedAt: new Date(),
           })
-          .where(and(eq(workflows.id, workflowId), eq(workflows.workspaceId, workspaceId)))
+          .where(
+            and(
+              eq(workflows.id, workflowId),
+              eq(workflows.workspaceId, workspaceId),
+            ),
+          )
           .returning();
-          
+
         if (!wf) throw new Error("Workflow not found");
       } else {
         const wf = await tx.query.workflows.findFirst({
-          where: { id: workflowId, workspaceId }
+          where: { id: workflowId, workspaceId },
         });
         if (!wf) throw new Error("Workflow not found");
       }
@@ -67,7 +90,10 @@ export class WorkflowService {
     });
   }
 
-  async listWorkflows(workspaceId: string, options: { page: number; limit: number; search?: string }) {
+  async listWorkflows(
+    workspaceId: string,
+    options: { page: number; limit: number; search?: string },
+  ) {
     const { page, limit, search } = options;
     const offset = (page - 1) * limit;
 
@@ -84,7 +110,10 @@ export class WorkflowService {
     });
 
     const whereClause = search
-      ? and(eq(workflows.workspaceId, workspaceId), ilike(workflows.name, `%${search}%`))
+      ? and(
+          eq(workflows.workspaceId, workspaceId),
+          ilike(workflows.name, `%${search}%`),
+        )
       : eq(workflows.workspaceId, workspaceId);
 
     const [{ value: total }] = await db
@@ -253,18 +282,29 @@ export class WorkflowService {
     return step;
   }
 
-  async updateStep(workspaceId: string, workflowId: string, stepId: string, data: UpdateStepInput) {
+  async updateStep(
+    workspaceId: string,
+    workflowId: string,
+    stepId: string,
+    data: UpdateStepInput,
+  ) {
     await this.getWorkflow(workspaceId, workflowId); // Verify ownership
 
     const [step] = await db
       .update(workflowSteps)
       .set({
         ...(data.actionType !== undefined && { actionType: data.actionType }),
-        ...(data.orderNumber !== undefined && { orderNumber: data.orderNumber }),
+        ...(data.orderNumber !== undefined && {
+          orderNumber: data.orderNumber,
+        }),
         ...(data.config !== undefined && { config: data.config }),
-        updatedAt: new Date(),
       })
-      .where(and(eq(workflowSteps.id, stepId), eq(workflowSteps.workflowId, workflowId)))
+      .where(
+        and(
+          eq(workflowSteps.id, stepId),
+          eq(workflowSteps.workflowId, workflowId),
+        ),
+      )
       .returning();
 
     if (!step) {
@@ -279,7 +319,12 @@ export class WorkflowService {
 
     const [deletedStep] = await db
       .delete(workflowSteps)
-      .where(and(eq(workflowSteps.id, stepId), eq(workflowSteps.workflowId, workflowId)))
+      .where(
+        and(
+          eq(workflowSteps.id, stepId),
+          eq(workflowSteps.workflowId, workflowId),
+        ),
+      )
       .returning();
 
     if (!deletedStep) {

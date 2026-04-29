@@ -31,7 +31,10 @@ export const workflows = pgTable("workflows", {
   webhookPath: text("webhook_path").notNull().unique(),
   isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at")
+    .defaultNow()
+    .$onUpdate(() => /* @__PURE__ */ new Date())
+    .notNull(),
 });
 
 // Workflow Steps Table
@@ -44,7 +47,10 @@ export const workflowSteps = pgTable("workflow_steps", {
   orderNumber: text("order_number").notNull().default("1"),
   config: jsonb("config").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at")
+    .defaultNow()
+    .$onUpdate(() => /* @__PURE__ */ new Date())
+    .notNull(),
 });
 
 // Webhook Events Table
@@ -71,7 +77,10 @@ export const workflowRuns = pgTable("workflow_runs", {
   startedAt: timestamp("started_at"),
   completedAt: timestamp("completed_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at")
+    .defaultNow()
+    .$onUpdate(() => /* @__PURE__ */ new Date())
+    .notNull(),
 });
 
 // Workflow Run Steps Table
@@ -89,7 +98,10 @@ export const workflowRunSteps = pgTable("workflow_run_steps", {
   logs: jsonb("logs"),
   error: text("error"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at")
+    .defaultNow()
+    .$onUpdate(() => /* @__PURE__ */ new Date())
+    .notNull(),
 });
 
 // Workflow Relations
