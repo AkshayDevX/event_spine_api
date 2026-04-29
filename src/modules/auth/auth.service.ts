@@ -6,6 +6,8 @@ import {
 } from "../../../drizzle/schema/tenant";
 import { SignupInput, LoginInput } from "./auth.schema";
 import bcrypt from "bcrypt";
+import { credentialService, SessionMetadata } from "./credential.service";
+import { scopesForRole, WorkspaceRole } from "./permissions";
 
 export class AuthService {
   async signup(data: SignupInput) {
@@ -64,6 +66,41 @@ export class AuthService {
     }
 
     return user;
+  }
+
+  async getPrimaryWorkspaceForUser(userId: string) {
+    const memberRecord = await db.query.workspaceMembers.findFirst({
+      where: {
+        userId,
+      },
+      with: {
+        workspace: true,
+      },
+    });
+
+    if (!memberRecord) {
+      throw new Error("No workspace associated with user");
+    }
+
+    const role = (memberRecord.role ?? "owner") as WorkspaceRole;
+    return {
+      workspaceId: memberRecord.workspaceId,
+      workspace: memberRecord.workspace,
+      role,
+      scopes: scopesForRole(role),
+    };
+  }
+
+  async createSession(
+    userId: string,
+    workspaceId: string,
+    metadata: SessionMetadata,
+  ) {
+    return await credentialService.createRefreshToken(
+      userId,
+      workspaceId,
+      metadata,
+    );
   }
 }
 

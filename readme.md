@@ -56,7 +56,7 @@ Refactored the execution flow from detached promises to reliable, distributed ba
 
 ### Phase 3: v3-enterprise (Application-Layer Resilience)
 
-_Status: In Progress_
+_Status: Complete_
 
 Hardening the backend application to be production-ready at the code level before touching infrastructure.
 
@@ -64,8 +64,8 @@ Hardening the backend application to be production-ready at the code level befor
 - **Strict per-tenant Rate Limiting** — Redis-backed admission control keyed by `workspaceId` and `webhookPath` to prevent any single tenant from monopolizing queue capacity.
 - **Idempotency Keys** — duplicate webhook deliveries are deduplicated using a Redis `SET NX` guard on a caller-provided `X-Idempotency-Key` header.
 - **Circuit Breakers** — outbound `http_request` step calls now trip an in-process circuit after repeated downstream failures to avoid hammering degraded APIs.
-- **RBAC & Hierarchical API Keys** — workspace-scoped API keys with fine-grained permission scopes, replacing the current single JWT model.
-- **Refresh Tokens** — short-lived access tokens with long-lived refresh tokens stored in the database.
+- **RBAC & Hierarchical API Keys** — workspace-scoped API keys with hashed storage, one-time secret display, revocation, and fine-grained permission scopes.
+- **Refresh Tokens & Sessions** — short-lived access tokens with long-lived refresh tokens stored hashed in PostgreSQL, rotated on refresh, and exposed as revocable user sessions.
 
 👉 **[Read the full feature logs for v3-enterprise here.](./docs/v3-enterprise.md)**
 

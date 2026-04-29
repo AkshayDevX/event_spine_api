@@ -11,22 +11,23 @@ import {
   deleteStepHandler,
   getAllWorkspaceRunsHandler,
 } from "./workflow.controller";
+import { requireWorkspaceAuth } from "../auth/workspace-auth";
+import { PermissionScope } from "../auth/permissions";
 
 export default async function workflowRoutes(app: FastifyInstance) {
   app.addHook("onRequest", async (request, reply) => {
-    try {
-      await request.jwtVerify();
-    } catch (err) {
-      reply.send(err);
-    }
+    const requiredScopes =
+      (request.routeOptions.config.requiredScopes as PermissionScope[]) ?? [];
+    await requireWorkspaceAuth(requiredScopes)(request, reply);
   });
 
   app.post(
     "/",
     {
+      config: { requiredScopes: ["workflow:write"] },
       schema: {
         tags: ["workflows"],
-        security: [{ bearerAuth: [] }],
+        security: [{ bearerAuth: [] }, { apiKeyAuth: [] }],
         body: {
           type: "object",
           required: ["name", "steps"],
@@ -55,9 +56,10 @@ export default async function workflowRoutes(app: FastifyInstance) {
   app.get(
     "/",
     {
+      config: { requiredScopes: ["workflow:read"] },
       schema: {
         tags: ["workflows"],
-        security: [{ bearerAuth: [] }],
+        security: [{ bearerAuth: [] }, { apiKeyAuth: [] }],
         querystring: {
           type: "object",
           properties: {
@@ -74,9 +76,10 @@ export default async function workflowRoutes(app: FastifyInstance) {
   app.get(
     "/:id",
     {
+      config: { requiredScopes: ["workflow:read"] },
       schema: {
         tags: ["workflows"],
-        security: [{ bearerAuth: [] }],
+        security: [{ bearerAuth: [] }, { apiKeyAuth: [] }],
         params: {
           type: "object",
           properties: {
@@ -91,9 +94,10 @@ export default async function workflowRoutes(app: FastifyInstance) {
   app.patch(
     "/:id",
     {
+      config: { requiredScopes: ["workflow:write"] },
       schema: {
         tags: ["workflows"],
-        security: [{ bearerAuth: [] }],
+        security: [{ bearerAuth: [] }, { apiKeyAuth: [] }],
         params: {
           type: "object",
           properties: {
@@ -116,9 +120,10 @@ export default async function workflowRoutes(app: FastifyInstance) {
   app.get(
     "/runs/all",
     {
+      config: { requiredScopes: ["workflow:read"] },
       schema: {
         tags: ["workflows"],
-        security: [{ bearerAuth: [] }],
+        security: [{ bearerAuth: [] }, { apiKeyAuth: [] }],
         querystring: {
           type: "object",
           properties: {
@@ -135,9 +140,10 @@ export default async function workflowRoutes(app: FastifyInstance) {
   app.get(
     "/:id/runs",
     {
+      config: { requiredScopes: ["workflow:read"] },
       schema: {
         tags: ["workflows"],
-        security: [{ bearerAuth: [] }],
+        security: [{ bearerAuth: [] }, { apiKeyAuth: [] }],
         params: {
           type: "object",
           properties: {
@@ -159,9 +165,10 @@ export default async function workflowRoutes(app: FastifyInstance) {
   app.get(
     "/:id/runs/:runId",
     {
+      config: { requiredScopes: ["workflow:read"] },
       schema: {
         tags: ["workflows"],
-        security: [{ bearerAuth: [] }],
+        security: [{ bearerAuth: [] }, { apiKeyAuth: [] }],
         params: {
           type: "object",
           properties: {
@@ -177,9 +184,10 @@ export default async function workflowRoutes(app: FastifyInstance) {
   app.post(
     "/:id/steps",
     {
+      config: { requiredScopes: ["workflow:write"] },
       schema: {
         tags: ["workflows"],
-        security: [{ bearerAuth: [] }],
+        security: [{ bearerAuth: [] }, { apiKeyAuth: [] }],
         params: {
           type: "object",
           properties: {
@@ -203,9 +211,10 @@ export default async function workflowRoutes(app: FastifyInstance) {
   app.patch(
     "/:id/steps/:stepId",
     {
+      config: { requiredScopes: ["workflow:write"] },
       schema: {
         tags: ["workflows"],
-        security: [{ bearerAuth: [] }],
+        security: [{ bearerAuth: [] }, { apiKeyAuth: [] }],
         params: {
           type: "object",
           properties: {
@@ -229,9 +238,10 @@ export default async function workflowRoutes(app: FastifyInstance) {
   app.delete(
     "/:id/steps/:stepId",
     {
+      config: { requiredScopes: ["workflow:write"] },
       schema: {
         tags: ["workflows"],
-        security: [{ bearerAuth: [] }],
+        security: [{ bearerAuth: [] }, { apiKeyAuth: [] }],
         params: {
           type: "object",
           properties: {

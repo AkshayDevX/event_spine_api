@@ -15,6 +15,8 @@ const envSchema = z.object({
   PORT: z.coerce.number().default(7000),
   DATABASE_URL: z.url(),
   JWT_SECRET: z.string(),
+  ACCESS_TOKEN_TTL_SECONDS: z.coerce.number().int().positive().default(900),
+  REFRESH_TOKEN_TTL_DAYS: z.coerce.number().int().positive().default(30),
   REDIS_URL: z.url().default("redis://localhost:6379"),
   PM2_INSTANCES: pm2InstancesSchema.default("max"),
   PM2_WORKER_INSTANCES: z.coerce.number().int().positive().default(1),
