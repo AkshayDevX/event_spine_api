@@ -10,6 +10,7 @@ import authRoutes from "./modules/auth/auth.route";
 import workflowRoutes from "./modules/workflows/workflow.route";
 import webhookRoutes from "./modules/webhooks/webhook.route";
 import liveRoutes from "./modules/live/live.route";
+import fastifyMetrics from "fastify-metrics";
 
 export async function buildApp() {
   const app = Fastify({
@@ -32,6 +33,15 @@ export async function buildApp() {
 
   // Register WebSockets
   await app.register(fastifyWebsocket);
+
+  // Register Metrics
+  await app.register(fastifyMetrics, {
+    endpoint: "/metrics",
+    routeMetrics: {
+      enabled: true,
+      registeredRoutesOnly: false,
+    },
+  });
 
   // Register Routes
   await app.register(healthRoutes, { prefix: "/api/v1/health" });

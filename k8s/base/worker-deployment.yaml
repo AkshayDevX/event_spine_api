@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker
+  labels:
+    app: eventspine
+    component: worker
+spec:
+  # Replicas managed by KEDA in production
+  replicas: 1
+  selector:
+    matchLabels:
+      app: eventspine
+      component: worker
+  template:
+    metadata:
+      labels:
+        app: eventspine
+        component: worker
+    spec:
+      containers:
+      - name: worker
+        image: eventspine-api:latest
+        command: ["node", "dist/src/worker.js"]
+        envFrom:
+        - configMapRef:
+            name: eventspine-config
+        - secretRef:
+            name: eventspine-secrets
+        resources:
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+          requests:
+            cpu: "200m"
+            memory: "256Mi"

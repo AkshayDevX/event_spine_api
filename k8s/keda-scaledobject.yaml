@@ -1,0 +1,20 @@
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: worker-scaler
+  namespace: default
+spec:
+  scaleTargetRef:
+    name: worker
+  minReplicaCount: 1
+  maxReplicaCount: 10
+  triggers:
+  - type: redis
+    metadata:
+      # Address of the Redis service in K8s
+      address: redis:6379
+      # BullMQ 'wait' list length trigger
+      listName: "bull:webhooks:wait"
+      listLength: "5"
+      # If using authentication:
+      # passwordFromEnv: REDIS_PASSWORD
