@@ -1,11 +1,21 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { db } from "../../../drizzle";
-import {
-  webhookEvents,
-  workflowRuns,
-} from "../../../drizzle/schema/workflow";
+import { webhookEvents, workflowRuns } from "../../../drizzle/schema/workflow";
 import { webhookPayloadSchema } from "./webhook.schema";
 import { webhookQueue } from "../queue/queue";
+import {
+  DuplicateWebhookError,
+  enforceWebhookRateLimit,
+  RateLimitExceededError,
+  reserveIdempotencyKey,
+} from "./ingress-guards";
+
+function getHeaderValue(
+  header: string | string[] | undefined,
+): string | undefined {
+  if (Array.isArray(header)) return header[0];
+  return header;
+}
 
 export async function handleWebhook(
   request: FastifyRequest<{ Params: { webhookPath: string } }>,
@@ -31,6 +41,28 @@ export async function handleWebhook(
         .status(404)
         .send({ message: "Webhook endpoint not found or inactive" });
     }
+
+    const rateLimit = await enforceWebhookRateLimit({
+      workspaceId: workflow.workspaceId,
+      webhookPath,
+    });
+
+    const idempotencyKey =
+      getHeaderValue(headers["x-idempotency-key"]) ||
+      getHeaderValue(headers["idempotency-key"]) ||
+      getHeaderValue(headers["x-github-delivery"]) ||
+      (request.body as unknown as { id: string })?.id?.toString();
+
+    if (idempotencyKey) {
+      await reserveIdempotencyKey({
+        workspaceId: workflow.workspaceId,
+        webhookPath,
+        idempotencyKey,
+      });
+    }
+
+    reply.header("X-RateLimit-Limit", rateLimit.limit);
+    reply.header("X-RateLimit-Remaining", rateLimit.remaining);
 
     // 2. Insert Webhook Event
     const [event] = await db
@@ -69,9 +101,23 @@ export async function handleWebhook(
       runId: run.id,
     });
   } catch (err: unknown) {
+    if (err instanceof RateLimitExceededError) {
+      return reply
+        .status(429)
+        .header("Retry-After", err.retryAfterSeconds)
+        .send({ message: err.message });
+    }
+
+    if (err instanceof DuplicateWebhookError) {
+      return reply.status(202).send({
+        success: true,
+        duplicate: true,
+        message: err.message,
+      });
+    }
+
     request.log.error(err);
     const message = err instanceof Error ? err.message : "Bad request";
     return reply.status(400).send({ message });
   }
 }
-

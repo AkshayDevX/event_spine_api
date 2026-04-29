@@ -56,16 +56,18 @@ Refactored the execution flow from detached promises to reliable, distributed ba
 
 ### Phase 3: v3-enterprise (Application-Layer Resilience)
 
-_Status: Pending_
+_Status: In Progress_
 
 Hardening the backend application to be production-ready at the code level before touching infrastructure.
 
-- **Node.js Cluster mode** — spawn one Fastify process per CPU core using the native `cluster` API or PM2 cluster mode.
-- **Strict per-tenant Rate Limiting** — `@fastify/rate-limit` keyed by `webhookPath` and `workspaceId` to prevent any single tenant from monopolizing queue capacity.
-- **Idempotency Keys** — reject or deduplicate duplicate webhook deliveries using a Redis `SET NX` guard on a caller-provided `X-Idempotency-Key` header.
-- **Circuit Breakers** — wrap outbound `http_request` step calls with `opossum` to stop hammering downstream APIs when they are degraded.
+- **PM2 Cluster mode** — production API fan-out is managed by PM2 using `ecosystem.config.cjs`, with `PM2_INSTANCES` override support.
+- **Strict per-tenant Rate Limiting** — Redis-backed admission control keyed by `workspaceId` and `webhookPath` to prevent any single tenant from monopolizing queue capacity.
+- **Idempotency Keys** — duplicate webhook deliveries are deduplicated using a Redis `SET NX` guard on a caller-provided `X-Idempotency-Key` header.
+- **Circuit Breakers** — outbound `http_request` step calls now trip an in-process circuit after repeated downstream failures to avoid hammering degraded APIs.
 - **RBAC & Hierarchical API Keys** — workspace-scoped API keys with fine-grained permission scopes, replacing the current single JWT model.
 - **Refresh Tokens** — short-lived access tokens with long-lived refresh tokens stored in the database.
+
+👉 **[Read the full feature logs for v3-enterprise here.](./docs/v3-enterprise.md)**
 
 ---
 

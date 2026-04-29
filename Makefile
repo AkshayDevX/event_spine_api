@@ -1,4 +1,4 @@
-.PHONY: setup up down restart logs db-shell db-push db-generate db-migrate db-studio clean db-delete dev dev-api dev-worker
+.PHONY: setup up down restart logs db-shell db-push db-generate db-migrate db-studio clean db-delete dev dev-api dev-worker pm2-start pm2-worker pm2-all pm2-stop pm2-delete pm2-logs
 
 # Initial project setup
 setup:
@@ -42,6 +42,25 @@ test:
 
 test-watch:
 	npm run test:watch
+
+# PM2 commands
+pm2-start:
+	npm run pm2:start
+
+pm2-worker:
+	npm run pm2:worker
+
+pm2-all:
+	npm run pm2:all
+
+pm2-stop:
+	npm run pm2:stop
+
+pm2-delete:
+	npm run pm2:delete
+
+pm2-logs:
+	npx pm2 logs
 
 # Shell access to containers
 db-shell:

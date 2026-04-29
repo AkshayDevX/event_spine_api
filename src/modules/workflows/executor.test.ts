@@ -258,5 +258,30 @@ describe("Executor", () => {
         response: "plain text response",
       });
     });
+
+    it("should open the circuit after repeated downstream failures", async () => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 503,
+        text: () => Promise.resolve(JSON.stringify({ error: "unavailable" })),
+      });
+      vi.stubGlobal("fetch", fetchMock);
+
+      const failingStep = () =>
+        executeStep(
+          "http_request",
+          { url: "https://api.example.com/flaky" },
+          {},
+        );
+
+      for (let attempt = 0; attempt < 5; attempt += 1) {
+        await expect(failingStep()).rejects.toThrow(
+          "HTTP Request failed with status 503",
+        );
+      }
+
+      await expect(failingStep()).rejects.toThrow("Circuit breaker open");
+      expect(fetchMock).toHaveBeenCalledTimes(5);
+    });
   });
 });

@@ -4,12 +4,59 @@ import {
   Payload,
   StepConfig,
 } from "./workflow.schema";
+import { env } from "../../config/env";
 
 export class FilterFailedError extends Error {
   constructor(message: string) {
     super(message);
     this.name = "FilterFailedError";
   }
+}
+
+class CircuitBreakerOpenError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "CircuitBreakerOpenError";
+  }
+}
+
+type CircuitState = {
+  failures: number;
+  openedAt?: number;
+};
+
+const httpCircuitStates = new Map<string, CircuitState>();
+
+function getCircuitKey(config: HttpRequestConfig) {
+  return `${(config.method ?? "POST").toUpperCase()} ${config.url}`;
+}
+
+function assertCircuitAllowsRequest(key: string) {
+  const state = httpCircuitStates.get(key);
+  if (!state?.openedAt) return;
+
+  const elapsed = Date.now() - state.openedAt;
+  if (elapsed < env.HTTP_CIRCUIT_RESET_TIMEOUT_MS) {
+    throw new CircuitBreakerOpenError(
+      `Circuit breaker open for ${key}; downstream is temporarily disabled`,
+    );
+  }
+}
+
+function recordCircuitSuccess(key: string) {
+  httpCircuitStates.delete(key);
+}
+
+function recordCircuitFailure(key: string) {
+  const current = httpCircuitStates.get(key) ?? { failures: 0 };
+  const failures = current.failures + 1;
+  httpCircuitStates.set(key, {
+    failures,
+    openedAt:
+      failures >= env.HTTP_CIRCUIT_FAILURE_THRESHOLD
+        ? Date.now()
+        : current.openedAt,
+  });
 }
 
 function getNestedValue(obj: Record<string, unknown>, path: string): unknown {
@@ -29,6 +76,8 @@ async function handleHttpRequest(config: HttpRequestConfig, payload: Payload) {
   const { url, method = "POST", headers = {}, body: customBody } = config;
 
   if (!url) throw new Error("HTTP Request requires a 'url' in config");
+  const circuitKey = getCircuitKey(config);
+  assertCircuitAllowsRequest(circuitKey);
 
   let finalBody: string | undefined = undefined;
   if (["POST", "PUT", "PATCH"].includes(method.toUpperCase())) {
@@ -39,35 +88,41 @@ async function handleHttpRequest(config: HttpRequestConfig, payload: Payload) {
     }
   }
 
-  const response = await fetch(url, {
-    method,
-    headers: {
-      "Content-Type": "application/json",
-      ...headers,
-    },
-    body: finalBody,
-  });
-
-  const responseText = await response.text();
-  let responseBody: unknown;
   try {
-    responseBody = JSON.parse(responseText);
-  } catch {
-    responseBody = responseText;
-  }
+    const response = await fetch(url, {
+      method,
+      headers: {
+        "Content-Type": "application/json",
+        ...headers,
+      },
+      body: finalBody,
+    });
 
-  if (!response.ok) {
-    throw new Error(
-      `HTTP Request failed with status ${response.status}: ${JSON.stringify(
-        responseBody,
-      )}`,
-    );
-  }
+    const responseText = await response.text();
+    let responseBody: unknown;
+    try {
+      responseBody = JSON.parse(responseText);
+    } catch {
+      responseBody = responseText;
+    }
 
-  return {
-    status: response.status,
-    response: responseBody,
-  };
+    if (!response.ok) {
+      throw new Error(
+        `HTTP Request failed with status ${response.status}: ${JSON.stringify(
+          responseBody,
+        )}`,
+      );
+    }
+
+    recordCircuitSuccess(circuitKey);
+    return {
+      status: response.status,
+      response: responseBody,
+    };
+  } catch (err: unknown) {
+    recordCircuitFailure(circuitKey);
+    throw err;
+  }
 }
 
 async function handleFilter(config: FilterConfig, payload: Payload) {
