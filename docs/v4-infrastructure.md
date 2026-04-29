@@ -46,9 +46,17 @@ The system is ready for Kubernetes deployment via manifests in `/k8s`:
 - **Visualization (Grafana)**: Accessible at `http://localhost:3001` (login: `admin`/`admin`). Pre-configured with Prometheus as the default data source.
 - **Health Checks**: All containers include liveness/readiness probes at `/api/v1/health` (API) and `/health` (Worker).
 
+## 6. Cloud-Native Readiness (Next Steps)
+
+To transition from local Docker Compose to a full-scale cloud environment (AWS EKS, GCP GKE), the following components are prioritized:
+
+- **Ingress Controller**: Replacing the manual Nginx configuration with a Kubernetes `Ingress` + `cert-manager`. This enables automated SSL certificate management via Let's Encrypt and dynamic routing.
+- **Secrets Management**: Migrating sensitive `.env` data to Kubernetes `Secret` objects. For high-security environments, integration with **HashiCorp Vault** is recommended for secret rotation and auditing.
+- **Auto-scaling (KEDA)**: **[CONFIGURED]** The system includes a ready-to-use `ScaledObject` manifest. This enables the worker cluster to automatically spin up or down based on real-time BullMQ queue depth once deployed to a cluster with the KEDA operator.
+
 ## Handoff & Next Steps
 
-The application is now **fully containerized** and **Cloud Agnostic**, ready for any modern container orchestration platform (AWS EKS, GCP GKE, Azure AKS, or local Docker Compose).
+The application is now **fully containerized** and **Cloud Agnostic**, ready for any modern container orchestration platform.
 
 ### Deployment Guide (Local Cluster)
 
