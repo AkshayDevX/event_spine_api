@@ -73,14 +73,13 @@ Hardening the backend application to be production-ready at the code level befor
 
 ### Phase 4: v4-infrastructure (Production-Grade Deployment)
 
-_Status: Pending_
+_Status: Complete (Core Infrastructure) / Pending (Cloud Scaling)_
 
-Moving from a single-machine deployment to a horizontally scalable, cloud-native infrastructure layer. **This phase is purely infrastructure — no new application code.**
+Moving from a single-machine deployment to a horizontally scalable, cloud-native infrastructure layer.
 
-- **Nginx Reverse Proxy** — sit Nginx in front of Fastify for SSL termination, connection rate limiting at the TCP layer, and upstream load balancing across the Node.js cluster processes.
-- **Docker Compose → Kubernetes** — migrate from `compose.yml` to Kubernetes manifests (`Deployment`, `Service`, `ConfigMap`, `Secret`).
-  - Fastify API pods and Webhook Worker pods are deployed as independent `Deployment` resources so they can scale independently.
-  - `HorizontalPodAutoscaler` scales worker pods based on BullMQ Redis queue depth (custom metrics via KEDA).
-- **KEDA (Kubernetes Event-Driven Autoscaling)** — automatically spin up more worker pods when the BullMQ queue backlog exceeds a defined threshold; scale back down when idle.
-- **Ingress Controller** — replace the Nginx manual config with a Kubernetes `Ingress` + cert-manager for automated SSL via Let's Encrypt.
-- **Secrets Management** — migrate `.env` secrets to Kubernetes `Secret` objects or HashiCorp Vault.
+- **Multi-Stage Dockerization** — optimized production images for API and Workers.
+- **Nginx Reverse Proxy** — layer 7 load balancing and rate limiting.
+- **Observability Stack** — integrated Prometheus and Grafana for real-time monitoring.
+- **Kubernetes Ready** — manifests prepared for horizontal pod autoscaling via KEDA.
+
+👉 **[Read the full Cloud Infrastructure & Deployment guide here.](./docs/v4-infrastructure.md)**

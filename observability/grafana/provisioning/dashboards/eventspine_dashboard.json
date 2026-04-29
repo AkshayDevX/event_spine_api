@@ -1,0 +1,103 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": "-- Grafana --",
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "target": {
+          "limit": 100,
+          "matchAny": false,
+          "tags": [],
+          "type": "dashboard"
+        },
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": 1,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "datasource": "Prometheus",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 0 },
+      "id": 1,
+      "title": "Throughput (RPS)",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "sum(rate(http_request_duration_seconds_count[1m])) by (method, route)", "legendFormat": "{{method}} {{route}}" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "reqps" } }
+    },
+    {
+      "datasource": "Prometheus",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 0 },
+      "id": 2,
+      "title": "Latency (P95)",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[1m])) by (le, route))", "legendFormat": "P95 {{route}}" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "s" } }
+    },
+    {
+      "datasource": "Prometheus",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 0 },
+      "id": 4,
+      "title": "Queue Backlog (BullMQ)",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "eventspine_worker_queue_waiting", "legendFormat": "Waiting" },
+        { "expr": "eventspine_worker_queue_active", "legendFormat": "Active" },
+        { "expr": "eventspine_worker_queue_failed", "legendFormat": "Failed" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "none" } }
+    },
+    {
+      "datasource": "Prometheus",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 8 },
+      "id": 5,
+      "title": "DB Connections",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "pg_stat_activity_count", "legendFormat": "Total Connections" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "none" } }
+    },
+    {
+      "datasource": "Prometheus",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 8 },
+      "id": 6,
+      "title": "Event Loop Lag",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "nodejs_eventloop_lag_seconds", "legendFormat": "{{instance}}" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "s" } }
+    },
+    {
+      "datasource": "Prometheus",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 8 },
+      "id": 3,
+      "title": "Memory Usage (RAM)",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "process_resident_memory_bytes", "legendFormat": "{{instance}}" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "bytes" } }
+    }
+  ],
+  "refresh": "5s",
+  "schemaVersion": 36,
+  "style": "dark",
+  "title": "EventSpine Service Health",
+  "uid": "eventspine-health",
+  "version": 2
+}

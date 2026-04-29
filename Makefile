@@ -1,18 +1,18 @@
-.PHONY: setup up down restart logs db-shell db-push db-generate db-migrate db-studio clean db-delete dev dev-api dev-worker pm2-start pm2-worker pm2-all pm2-stop pm2-delete pm2-logs
+.PHONY: setup up down restart logs ps db-shell db-push db-generate db-migrate db-studio clean dev dev-api dev-worker test test-watch
 
 # Initial project setup
 setup:
 	npm install
-	docker-compose --env-file .env.docker up -d
+	docker-compose up -d
 	@echo "Waiting for database to start..."
 	@node -e "setTimeout(()=>{}, 5000)"
 	npm run db:generate
 	npm run db:migrate
-	@echo "Setup complete! You can now run 'npm run dev' to start."
+	@echo "Setup complete! Cluster is running via Nginx on port 80."
 
 # Docker Compose commands
 up:
-	docker-compose --env-file .env.docker up -d
+	docker-compose up -d
 	@echo "Containers started successfully!"
 
 down:
@@ -20,13 +20,16 @@ down:
 	@echo "Containers stopped!"
 
 restart:
-	docker-compose down && docker-compose --env-file .env.docker up -d
+	docker-compose down && docker-compose up -d
 	@echo "Containers restarted!"
 
 logs:
 	docker-compose logs -f
 
-# Dev commands
+ps:
+	docker-compose ps
+
+# Native Dev commands (Non-Docker)
 dev:
 	npm run dev
 
@@ -42,25 +45,6 @@ test:
 
 test-watch:
 	npm run test:watch
-
-# PM2 commands
-pm2-start:
-	npm run pm2:start
-
-pm2-worker:
-	npm run pm2:worker
-
-pm2-all:
-	npm run pm2:all
-
-pm2-stop:
-	npm run pm2:stop
-
-pm2-delete:
-	npm run pm2:delete
-
-pm2-logs:
-	npx pm2 logs
 
 # Shell access to containers
 db-shell:
