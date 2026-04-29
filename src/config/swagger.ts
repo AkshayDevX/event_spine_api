@@ -16,6 +16,12 @@ export async function registerSwagger(app: FastifyInstance) {
             scheme: "bearer",
             bearerFormat: "JWT",
           },
+          apiKeyAuth: {
+            type: "apiKey",
+            in: "header",
+            name: "X-API-Key",
+            description: "Workspace API key with the required route scope.",
+          },
         },
       },
     },

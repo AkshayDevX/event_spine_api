@@ -7,6 +7,7 @@ import * as workflowSchema from "./schema/workflow";
 
 const pool = new Pool({
   connectionString: env.DATABASE_URL,
+  max: 20,
 });
 
 export const db = drizzle({

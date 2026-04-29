@@ -19,37 +19,55 @@ This section logs the progression of the project from a basic MVP to a scalable,
 
 ---
 
-### Phase 1: v1-mvp (The Foundation)
+### Phase 1: v1-mvp (The Foundation + Async Execution Engine)
 
 _Status: Complete_
 
-Established the foundational backend architecture, database schemas, and multi-tenant capabilities. Built the core trigger/action concepts allowing synchronous webhook ingestions.
+Established the foundational backend architecture, database schemas, and multi-tenant capabilities. Evolved the synchronous webhook handler into an enterprise-grade asynchronous pipeline with a real step executor and strict TypeScript.
+
+- Multi-tenant workspace architecture with JWT authentication
+- Asynchronous webhook processing with `202 Accepted` and fire-and-forget execution
+- Database state machine for full execution lifecycle tracking
+- Real step executor supporting `http_request` and `filter` actions
+- Execution visibility APIs with step-level audit trails
+- Zero `any` types — strict TypeScript across the entire codebase
+- Drizzle RQB v2 relational queries
+- Vitest test suite — 29 tests covering executor unit tests and integration tests
+
 👉 **[Read the full feature logs for v1-mvp here.](./docs/v1-mvp.md)**
 
 ---
 
 ### Phase 2: v2-async-engine (The Distributed System)
 
-_Status: Pending_
+_Status: Complete_
 
-Refactoring the execution flow from synchronus API calls to reliable, background asynchronous jobs.
+Refactored the execution flow from detached promises to reliable, distributed background jobs, and implemented real-time execution streaming.
 
-- Planned features: Intoduction of Redis & BullMQ, exponential backoff retries, decoupling of Publishers/Subscribers, and Dead Letter Queues (DLQ).
+- **Redis & BullMQ** — replaced the fire-and-forget promise with a durable job queue for guaranteed delivery.
+- **Background Worker** — separated the API server from the worker processes for independent scaling.
+- **WebSockets & Pub/Sub** — built real-time workflow progress streaming using `@fastify/websocket` and Redis Pub/Sub.
+- **Dockerized Redis** — added persistent Redis AOF configurations to `compose.yml` with health checks.
+- **Dev Tooling** — optimized multi-process development with `concurrently` and an enhanced `Makefile`.
+
+👉 **[Read the full feature logs for v2-async-engine here.](./docs/v2-async-engine.md)**
 
 ---
 
 ### Phase 3: v3-enterprise (Application-Layer Resilience)
 
-_Status: Pending_
+_Status: Complete_
 
 Hardening the backend application to be production-ready at the code level before touching infrastructure.
 
-- **Node.js Cluster mode** — spawn one Fastify process per CPU core using the native `cluster` API or PM2 cluster mode.
-- **Real Step Executor** — replace the `setTimeout` mock in `webhook.worker.ts` with a real `StepExecutor` dispatching on `actionType` (e.g. `http_request`, `log_payload`).
-- **Strict per-tenant Rate Limiting** — `@fastify/rate-limit` keyed by `webhookPath` and `workspaceId` to prevent any single tenant from monopolizing queue capacity.
-- **Idempotency Keys** — reject or deduplicate duplicate webhook deliveries using a Redis `SET NX` guard on a caller-provided `X-Idempotency-Key` header.
-- **Circuit Breakers** — wrap outbound `http_request` step calls with `opossum` to stop hammering downstream APIs when they are degraded.
-- **RBAC & Hierarchical API Keys** — workspace-scoped API keys with fine-grained permission scopes, replacing the current single JWT model.
+- **PM2 Cluster mode** — production API fan-out is managed by PM2 using `ecosystem.config.cjs`, with `PM2_INSTANCES` override support.
+- **Strict per-tenant Rate Limiting** — Redis-backed admission control keyed by `workspaceId` and `webhookPath` to prevent any single tenant from monopolizing queue capacity.
+- **Idempotency Keys** — duplicate webhook deliveries are deduplicated using a Redis `SET NX` guard on a caller-provided `X-Idempotency-Key` header.
+- **Circuit Breakers** — outbound `http_request` step calls now trip an in-process circuit after repeated downstream failures to avoid hammering degraded APIs.
+- **RBAC & Hierarchical API Keys** — workspace-scoped API keys with hashed storage, one-time secret display, revocation, and fine-grained permission scopes.
+- **Refresh Tokens & Sessions** — short-lived access tokens with long-lived refresh tokens stored hashed in PostgreSQL, rotated on refresh, and exposed as revocable user sessions.
+
+👉 **[Read the full feature logs for v3-enterprise here.](./docs/v3-enterprise.md)**
 
 ---
 
